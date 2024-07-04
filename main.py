@@ -16,6 +16,7 @@ import pickle
 import math
 import pyautogui
 import geopandas as gpd
+from sqlalchemy import create_engine
 from shapely.geometry import Point, LineString
 import pandas as pd
 import filter_log
@@ -118,6 +119,8 @@ def down_scroll(max_iter):
         pyautogui.mouseUp()
         num_iter += 1
 
+
+
 def fast_moves():
     speed_arrow = 1
     pyautogui.PAUSE = 0
@@ -164,6 +167,11 @@ def screen_coor():
     long_coord_ekran = float(current_url.split("=")[2].split("%2C")[1][:-2])
     print(f"Координаты экрана {ekrans + 1}:", lat_coord_ekran, long_coord_ekran)
     return  lat_coord_ekran, long_coord_ekran
+
+def save_in_base(gdf):
+    engine = create_engine('postgresql://postgres:J3kCvwVTbp@localhost:5432/moscow map')
+
+    gdf.to_postgis('mos_map', engine, if_exists='append',index_label=True)
 
 
 # make chrome log requests
@@ -476,16 +484,19 @@ while max_ekr_vertikal < 150:
             geojson_str = json.dumps(logs_return)
             # print("аывавпкпы")
             # Игнор ошибок
-            original_stder = sys.stderr
-            sys.stderr = NullWritter()
+        original_stder = sys.stderr
+        sys.stderr = NullWritter()
 
-            gdf_geojson_data = gpd.read_file(geojson_str, driver='GeoJSON')
-            # Убираем дубликаты
-            gdf_geojson_data = gdf_geojson_data.drop_duplicates(subset='id')
+        gdf_geojson_data = gpd.read_file(geojson_str, driver='GeoJSON')
+        # Убираем дубликаты
+        gdf_geojson_data = gdf_geojson_data.drop_duplicates(subset='id')
+        sys.stderr = original_stder
 
-            # Сохраните GeoDataFrame в формате GeoPackage
-            gdf_geojson_data.to_file(rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans}.gpkg', driver='GPKG')
-            sys.stderr = original_stder
+        # Сохраните GeoDataFrame в формате GeoPackage
+        # gdf_geojson_data.to_file(rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans}.gpkg', driver='GPKG')
+
+        save_in_base(gdf_geojson_data)
+
             #
             # with open(rf'C:\Users\Birykov.SA\Desktop\HAR parcer\Buildings\Mega_parcer\builds_saves_{max_ekr_vertikal}_{ekrans}_Ekran.geojson', 'w') as file:
             #     json.dump(geojson_data, file, indent=2)
