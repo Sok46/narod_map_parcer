@@ -169,9 +169,9 @@ def screen_coor():
     return  lat_coord_ekran, long_coord_ekran
 
 def save_in_base(gdf):
-    engine = create_engine('postgresql://postgres:J3kCvwVTbp@localhost:5432/moscow map')
+    engine = create_engine('postgresql://postgres:J3kCvwVTbp@localhost:5432/sharipovo_map')
 
-    gdf.to_postgis('mos_map', engine, if_exists='append',index_label=True)
+    gdf.to_postgis('geoms', engine, if_exists='append',index_label='oid', index=True)
 
 
 # make chrome log requests
@@ -185,7 +185,7 @@ driver = webdriver.Chrome(options=options)
 original_stder = sys.stderr
 sys.stderr=NullWritter()
 # # Укажите путь к файлу gpkg с зоной для поиска
-area_path = r"C:\Users\sergey.biryukov\Desktop\HAR parcer\HAR parcer\Buildings\areaOfSearch.gpkg"
+area_path = r"C:\Users\sergey.biryukov\Desktop\HAR parcer\HAR parcer\Buildings\areaOfSearch_sharipovo.gpkg"
 
 data = gpd.read_file(area_path,driver="GPKG", encoding="utf-8")
 # конец игнорирования ошибок в консоли
@@ -274,8 +274,6 @@ sleep(8)
 # input_tab  = driver.find_element(By.XPATH,'//input[@placeholder="Поиск мест и адресов"]')
 # input_tab.send_keys('Маршрут 5')
 
-
-
 print("Ширина окна браузера:", window_width)
 
 
@@ -296,9 +294,10 @@ while max_ekr_vertikal < 150:
     new_x, new_y = 0, start_positionY
     current_urls = ["1","2"]
     error_ekrans = 0
-
+    last_features = []
     while max_ekr_horisontal < 2:
         logi = []
+
         if ekrans > 2 and current_urls[-1] == current_urls[-2] :
             while error_ekrans < 3:
                 print(current_urls[-1] ,"\n", current_urls[-2])
@@ -313,6 +312,7 @@ while max_ekr_vertikal < 150:
 
         error_ekrans = 0
         index_features = []
+        print( index_features)
         # Плавно переместите курсор от текущих координат к новым координатам
         pyautogui.moveTo(new_x, new_y, duration=2, tween=pyautogui.easeInOutQuad)
 
@@ -332,17 +332,9 @@ while max_ekr_vertikal < 150:
             pass
 
         # Алгоритм, если мы в местности без зданий, чтобы быстрее прошерстить экран
-        if ekrans != 0:
-            filepath = rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans - 1}.gpkg'
-            # Игнор ошибок
-            original_stder = sys.stderr
-            sys.stderr = NullWritter()
-            gdf_filepath = gpd.read_file(filepath)
-            sys.stderr = original_stder
-            num_objects = gdf_filepath.shape[0]
-            print(f"Количество объектов в предыдущем экране {ekrans-1}:", num_objects)
-            # Если количество объектов на предыдущем экране меньше 5, то считаем сколько на текущем экране
-            if num_objects < 5:
+        print("last features", last_features)
+        if ekrans != 0 and len(last_features) > 0:
+            if len(last_features) <5:
                 fast_moves()
                 logs_fast = filter_log.filter_log.logs_func(filter_log, driver, logi, excel_df, index_features)
                 geojson_str = json.dumps(logs_fast)
@@ -355,22 +347,22 @@ while max_ekr_vertikal < 150:
                 print('gdf_logs_return compl')
                 num_logs_return = gdf_logs_return.shape[0]
                 print('num_logs_return compl')
-                # Если количество объектов на предыдущем экране = 0, то переходим к следующему экрану
+
                 if num_logs_return == 0:
                     print("на экране нет объектов, иду на следующий")
                     righr_scroll(1)
                     time.sleep(2)
                     # Игнор ошибок
-                    original_stder = sys.stderr
-                    sys.stderr = NullWritter()
-                    gdf = gpd.GeoDataFrame(columns=['id', 'name'])
-                    gdf['geometry'] = None
-                    gdf = gdf.set_geometry('geometry')
-
-                    file_path = rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans}.gpkg'
-                    gdf.to_file(file_path,layer='имя_вашего_слоя', driver="GPKG")
-                    sys.stderr = original_stder
-                    print("count:",gdf.shape[0])
+                    # original_stder = sys.stderr
+                    # sys.stderr = NullWritter()
+                    # gdf = gpd.GeoDataFrame(columns=['id', 'name'])
+                    # gdf['geometry'] = None
+                    # gdf = gdf.set_geometry('geometry')
+                    #
+                    # file_path = rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans}.gpkg'
+                    # gdf.to_file(file_path,layer='имя_вашего_слоя', driver="GPKG")
+                    # sys.stderr = original_stder
+                    # print("count:",gdf.shape[0])
                     # Сохранить данные последнего экрана в json
                     #--------------------------------
                     current_url = driver.current_url
@@ -391,15 +383,72 @@ while max_ekr_vertikal < 150:
                     print(f"на экране {num_logs_return} объектов, остаёмся")
 
 
+        #     filepath = rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans - 1}.gpkg'
+        #     # Игнор ошибок
+        #     original_stder = sys.stderr
+        #     sys.stderr = NullWritter()
+        #     gdf_filepath = gpd.read_file(filepath)
+        #     sys.stderr = original_stder
+        #     num_objects = gdf_filepath.shape[0]
+        #     print(f"Количество объектов в предыдущем экране {ekrans-1}:", num_objects)
+        #     # Если количество объектов на предыдущем экране меньше 5, то считаем сколько на текущем экране
+        #     if num_objects < 5:
+        #         fast_moves()
+        #         logs_fast = filter_log.filter_log.logs_func(filter_log, driver, logi, excel_df, index_features)
+        #         geojson_str = json.dumps(logs_fast)
+        #         print('logs_return compl')
+        #         # Игнор ошибок
+        #         original_stder = sys.stderr
+        #         sys.stderr = NullWritter()
+        #         gdf_logs_return = gpd.read_file(geojson_str)
+        #         sys.stderr = original_stder
+        #         print('gdf_logs_return compl')
+        #         num_logs_return = gdf_logs_return.shape[0]
+        #         print('num_logs_return compl')
+        #         # Если количество объектов на предыдущем экране = 0, то переходим к следующему экрану
+        #         if num_logs_return == 0:
+        #             print("на экране нет объектов, иду на следующий")
+        #             righr_scroll(1)
+        #             time.sleep(2)
+        #             # Игнор ошибок
+        #             original_stder = sys.stderr
+        #             sys.stderr = NullWritter()
+        #             gdf = gpd.GeoDataFrame(columns=['id', 'name'])
+        #             gdf['geometry'] = None
+        #             gdf = gdf.set_geometry('geometry')
+        #
+        #             file_path = rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans}.gpkg'
+        #             gdf.to_file(file_path,layer='имя_вашего_слоя', driver="GPKG")
+        #             sys.stderr = original_stder
+        #             print("count:",gdf.shape[0])
+        #             # Сохранить данные последнего экрана в json
+        #             #--------------------------------
+        #             current_url = driver.current_url
+        #             current_urls.append(current_url)
+        #             file_path = rf"{layers_path}\last_screen.json"  # Указание пути и имени файла
+        #             data = {
+        #                 "current_url": current_url,
+        #                 "ekrans": ekrans,
+        #                 "parity": parity
+        #             }
+        #
+        #             with open(file_path, "w") as file:
+        #                 json.dump(data, file)
+        #             #---------------------------------
+        #             ekrans +=1
+        #             continue
+        #         else:
+        #             print(f"на экране {num_logs_return} объектов, остаёмся")
+        #
+
         # Пока текущая итерация не доёдет до конца экрана, мы  будем возюкать
         while a <= h:
             # print("logi:",index_features)
             # Ускоряет стрелку, если вначале экрана 3 итерации подряд не попадалось объектов
             # либо если 6 раз подряд попадались одни и те же объекты
             # print("index_features[-3:]", index_features[-3:])
-            # print("index_features[-6:-3]", index_features[-6:-3])
-            if index_features[-3:] == index_features[-6:-3]:
-
+            print("-3",index_features[-3:],"-6,-3", index_features[-6:-3])
+            if a > 1 and index_features[-2:] == index_features[-4:-2] :
                 print("Одни и те же фичи, ускоряемся")
                 pyautogui.PAUSE = 0
                 speed_arrow = 1
@@ -484,6 +533,8 @@ while max_ekr_vertikal < 150:
             geojson_str = json.dumps(logs_return)
             # print("аывавпкпы")
             # Игнор ошибок
+        last_features = index_features
+
         original_stder = sys.stderr
         sys.stderr = NullWritter()
 

@@ -105,9 +105,10 @@ class filter_log:
         # print()
 
         if len(id_obj) != 0:
+            # print("id_obj",id_obj)
         #     index_features.append(0)
         # else:
-            index_features.append(id_obj)
+            index_features.append(set(id_obj))
 
         features = []
         for i in range(len(matching_coordinates)):
