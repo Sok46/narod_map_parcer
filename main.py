@@ -229,6 +229,7 @@ if os.path.isfile(json_path):
 else:
     start_url = f"https://n.maps.yandex.ru/#!/?z=18&ll={gdf_xmin}%2C{gdf_ymax}&l=nk%23sat"
     ekrans = 0
+    parity = 1
 
 # fetch a site that does xhr requests
 driver.get(start_url)
@@ -287,20 +288,30 @@ pyautogui.FAILSAFE = False
 
 max_ekr_vertikal = 0
 # Чётность вертикальных экранов, которая заддаёт направление для скролла
-parity = 1
+
 while max_ekr_vertikal < 150:
     max_ekr_horisontal = 0
     # Укажите новые координаты для перемещения курсора
     new_x, new_y = 0, start_positionY
     current_urls = ["1","2"]
+    # json_path = os.path.join(layers_path, "last_screen.json")
+    # if os.path.isfile(json_path):
+    #     print("Файл Json существует.")
+    #     with open(json_path, "r") as file:
+    #         data = json.load(file)
+    #         start_url = data.get("current_url")
+    #         parity = data.get("parity")
+    #
+    #         ekrans = data.get("ekrans")
+
     error_ekrans = 0
     last_features = []
     while max_ekr_horisontal < 2:
         logi = []
 
-        if ekrans > 2 and current_urls[-1] == current_urls[-2] :
+        if ekrans > 2 and start_url[-1] == driver.current_url :
             while error_ekrans < 3:
-                print(current_urls[-1] ,"\n", current_urls[-2])
+                print(start_url[-1] ,"\n", driver.current_url)
                 print("Экран не сдвинулся с места")
                 if error_ekrans == 2:
                     exit()
@@ -508,6 +519,13 @@ while max_ekr_vertikal < 150:
                     parity += 1
                     max_ekr_vertikal += 1
                     ekrans = 0
+
+                    file_path = rf"{layers_path}\last_screen.json"  # Указание пути и имени файла
+                    data = {
+                        "current_url": current_url,
+                        "ekrans": ekrans,
+                        "parity": parity
+                    }
 
                     # Получаем координаты экрана и сверяем их long с последней точкой целевого полигона
                     lat_coord_ekran, long_coord_ekran = screen_coor()
