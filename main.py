@@ -20,8 +20,8 @@ from sqlalchemy import create_engine
 from shapely.geometry import Point, LineString
 import pandas as pd
 import filter_log
-
 from shapely.ops import nearest_points
+
 #Файл для замены категорий зданий
 excel_df = pd.read_excel(r'C:\Users\sergey.biryukov\Desktop\HAR parcer\HAR parcer\Buildings\Категории яндекс карты 2.xlsx')
 layers_path = r"C:\Users\sergey.biryukov\Desktop\HAR parcer\HAR parcer\Buildings\Mega_parcer2"
@@ -56,11 +56,11 @@ def move_left(speed_arrow,step_y):
 
 
 
-def righr_scroll(max_iter):
+def righr_scroll(max_iter, border_offset = 0):
     num_iter = 0
     if parity % 2 != 0:
         while num_iter < max_iter:
-            new_x, new_y = window_width - 100, start_positionY + (h * step_y)
+            new_x, new_y = window_width - 100 - border_offset, start_positionY + (h * step_y)
             pyautogui.moveTo(new_x, new_y, duration=2)
             # Нажимаем левую кнопку мыши если последняя строка
             print("leftclick")
@@ -169,9 +169,34 @@ def screen_coor():
     return  lat_coord_ekran, long_coord_ekran
 
 def save_in_base(gdf):
-    engine = create_engine('postgresql://postgres:J3kCvwVTbp@localhost:5432/sharipovo_map')
+    engine = create_engine('postgresql://postgres:J3kCvwVTbp@localhost:5432/nazarovo_map')
 
+    # polygons = []
+    # points = []
+    # lines = []
+    # srid = gdf.crs.to_epsg()
+    #
+    # # Определение типа геометрии и распределение по спискам
+    # for geom in gdf.geometry:
+    #     if geom.geom_type == 'Polygon' or geom.geom_type == 'MultiPolygon':
+    #         polygons.append(geom)
+    #     elif geom.geom_type == 'Point' or geom.geom_type == 'MultiPoint':
+    #         points.append(geom)
+    #     elif geom.geom_type == 'LineString' or geom.geom_type == 'MultiLineString':
+    #         lines.append(geom)
+    #
+    # # Преобразование списков в GeoDataFrame
+    # polygons_gdf = gpd.GeoDataFrame(geometry=polygons, crs=srid)
+    # points_gdf = gpd.GeoDataFrame(geometry=points, crs=srid)
+    # lines_gdf = gpd.GeoDataFrame(geometry=lines, crs=srid)
+
+
+
+    # print('gdf = ', gdf)
     gdf.to_postgis('geoms', engine, if_exists='append',index_label='oid', index=True)
+    # polygons_gdf.to_postgis('polygons', engine, if_exists='append',index_label='oid', index=True)
+    # points_gdf.to_postgis('points', engine, if_exists='append',index_label='oid', index=True)
+    # lines_gdf.to_postgis('lines', engine, if_exists='append',index_label='oid', index=True)
 
 
 # make chrome log requests
@@ -183,9 +208,9 @@ options.set_capability(
 driver = webdriver.Chrome(options=options)
 # Игнорирование ошибок в консоли
 original_stder = sys.stderr
-sys.stderr=NullWritter()
+sys.stderr = NullWritter()
 # # Укажите путь к файлу gpkg с зоной для поиска
-area_path = r"C:\Users\sergey.biryukov\Desktop\HAR parcer\HAR parcer\Buildings\areaOfSearch_sharipovo.gpkg"
+area_path = r"C:\Users\sergey.biryukov\Desktop\HAR parcer\HAR parcer\Buildings\areaOfSearch_Nazarovo.gpkg"
 
 data = gpd.read_file(area_path,driver="GPKG", encoding="utf-8")
 # конец игнорирования ошибок в консоли
@@ -225,7 +250,8 @@ if os.path.isfile(json_path):
         start_url = data.get("current_url")
         parity = data.get("parity")
 
-        ekrans = data.get("ekrans")
+        # ekrans = data.get("ekrans")
+        ekrans = 0
 else:
     start_url = f"https://n.maps.yandex.ru/#!/?z=18&ll={gdf_xmin}%2C{gdf_ymax}&l=nk%23sat"
     ekrans = 0
@@ -309,17 +335,19 @@ while max_ekr_vertikal < 150:
     while max_ekr_horisontal < 2:
         logi = []
 
-        if ekrans > 2 and start_url[-1] == driver.current_url :
-            while error_ekrans < 3:
-                print(start_url[-1] ,"\n", driver.current_url)
+        if ekrans > 2 and start_url == driver.current_url :
+
+            while error_ekrans < 4:
+                righr_scroll(1,50)
+                print(start_url ,"\n", driver.current_url)
                 print("Экран не сдвинулся с места")
-                if error_ekrans == 2:
+                if error_ekrans == 3:
                     exit()
 
                 if error_ekrans == 0:
                     ekrans -= 1
                 error_ekrans += 1
-                continue
+
 
         error_ekrans = 0
         index_features = []
@@ -563,6 +591,8 @@ while max_ekr_vertikal < 150:
 
         # Сохраните GeoDataFrame в формате GeoPackage
         # gdf_geojson_data.to_file(rf'{layers_path}\builds_saves_{max_ekr_vertikal}_{ekrans}.gpkg', driver='GPKG')
+
+
 
         save_in_base(gdf_geojson_data)
 
